@@ -4,6 +4,7 @@ import config from "./config";
 import initDB from "./config/db";
 import { vehicleRoutes } from "./modules/vehicle/vehicle.routes";
 import { bookingRoutes } from "./modules/booking/booking.routes";
+import { userRoutes } from "./modules/user/User.routes";
 
 const app = express();
 // Parser
@@ -15,6 +16,9 @@ initDB();
 
 // Auth
 app.use("/api/v1/auth", authRoutes);
+
+// Users
+app.use("/api/v1/users", userRoutes);
 
 // Vehicles
 app.use("/api/v1/vehicles", vehicleRoutes);

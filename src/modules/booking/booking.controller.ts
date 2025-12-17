@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import { bookingService } from "./booking.service";
+import { pool } from "../../config/db";
 
 const createBooking = async (req: Request, res: Response) => {
   try {
@@ -34,21 +35,33 @@ const getBookings = async (req: Request, res: Response) => {
 };
 
 const updateBooking = async (req: Request, res: Response) => {
+  const client = await pool.connect();
   try {
+    const { bookingId } = req.params;
+    const { status } = req.body;
+
     const result = await bookingService.updateBooking(
-      req.params.bookingId as string,
+      bookingId as string,
       req.body
     );
+
+    let message = "Booking updated successfully";
+    if (status === "returned") {
+      message = "Booking marked as returned. Vehicle is now available";
+    } else if (status === "cancelled") {
+      message = "Booking cancelled successfully";
+    }
+
     res.status(200).json({
       success: true,
-      message: `Booking ${req.body.status} successfully`,
+      message: message,
       data: result,
     });
-  } catch (error: any) {
-    res.status(500).json({
-      success: false,
-      message: error.message,
-    });
+  } catch (err) {
+    await client.query("ROLLBACK");
+    throw err;
+  } finally {
+    client.release();
   }
 };
 

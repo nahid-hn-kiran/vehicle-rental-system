@@ -1,3 +1,4 @@
+import { AuthRoutes } from "./modules/auth/auth.routes";
 import express, { Request, response, Response } from "express";
 import config from "./config";
 import initDB from "./config/db";
@@ -10,7 +11,8 @@ app.use(express.urlencoded());
 // Initializing Database
 initDB();
 
-// User Crud
+// Auth
+app.use("/auth", AuthRoutes);
 
 app.use((req: Request, res: Response) => {
   res.status(404).json({

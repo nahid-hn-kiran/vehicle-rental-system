@@ -1,7 +1,8 @@
-import { AuthRoutes } from "./modules/auth/auth.routes";
+import { authRoutes } from "./modules/auth/auth.routes";
 import express, { Request, response, Response } from "express";
 import config from "./config";
 import initDB from "./config/db";
+import { vehicleRoutes } from "./modules/vehicle/vehicle.routes";
 
 const app = express();
 // Parser
@@ -12,7 +13,10 @@ app.use(express.urlencoded());
 initDB();
 
 // Auth
-app.use("/auth", AuthRoutes);
+app.use("/api/v1/auth", authRoutes);
+
+// Vehicles
+app.use("/api/v1/vehicles", vehicleRoutes);
 
 app.use((req: Request, res: Response) => {
   res.status(404).json({

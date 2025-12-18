@@ -21,15 +21,20 @@ const createBooking = async (req: Request, res: Response) => {
 const getBookings = async (req: Request, res: Response) => {
   try {
     const result = await bookingService.getBookings(req.user.id, req.user.role);
+    const message =
+      req.user.role === "admin"
+        ? "Bookings retrieved successfully"
+        : "Your bookings retrieved successfully";
     res.status(200).json({
       success: true,
-      message: "Bookings retrieved successfully",
+      message: message,
       data: result,
     });
   } catch (error: any) {
     res.status(500).json({
       success: false,
       message: error.message,
+      error: error,
     });
   }
 };
@@ -42,6 +47,8 @@ const updateBooking = async (req: Request, res: Response) => {
 
     const result = await bookingService.updateBooking(
       bookingId as string,
+      req.user.id,
+      req.user.role,
       req.body
     );
 
@@ -57,9 +64,13 @@ const updateBooking = async (req: Request, res: Response) => {
       message: message,
       data: result,
     });
-  } catch (err) {
+  } catch (error: any) {
     await client.query("ROLLBACK");
-    throw err;
+    res.status(500).json({
+      success: false,
+      message: error.message,
+      error: error,
+    });
   } finally {
     client.release();
   }

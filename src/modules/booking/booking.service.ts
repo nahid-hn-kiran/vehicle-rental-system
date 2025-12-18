@@ -54,28 +54,103 @@ const createBooking = async (userId: number, payload: any) => {
 };
 
 const getBookings = async (userId: number, role: string) => {
-  if (role === "admin") {
-    const result = await pool.query("SELECT * FROM bookings");
-    return result.rows;
-  }
+  const client = await pool.connect();
 
-  if (role === "customer") {
-    const query = "SELECT * FROM bookings WHERE customer_id = $1";
-    const result = await pool.query(query, [userId]);
-    return result.rows;
+  try {
+    const currentTime = new Date().toISOString();
+
+    const expiredBookings = await client.query(
+      `SELECT id, vehicle_id FROM bookings WHERE status = 'active' AND rent_end_date < $1`,
+      [currentTime]
+    );
+
+    if (expiredBookings.rows.length > 0) {
+      await client.query("BEGIN");
+      try {
+        for (const booking of expiredBookings.rows) {
+          await client.query(
+            `UPDATE bookings SET status = 'returned' WHERE id = $1`,
+            [booking.id]
+          );
+          await client.query(
+            `UPDATE vehicles SET availability_status = 'available' WHERE id = $1`,
+            [booking.vehicle_id]
+          );
+        }
+        await client.query("COMMIT");
+      } catch (err) {
+        await client.query("ROLLBACK");
+        console.error("Auto-return system failed:", err);
+      }
+    }
+
+    if (role === "admin") {
+      const result = await client.query("SELECT * FROM bookings");
+      return result.rows;
+    }
+
+    if (role === "customer") {
+      const query = "SELECT * FROM bookings WHERE customer_id = $1";
+      const result = await client.query(query, [userId]);
+      return result.rows;
+    }
+  } finally {
+    client.release();
   }
 };
 
-const updateBooking = async (bookingId: string, payload: any) => {
+const updateBooking = async (
+  bookingId: string,
+  userId: string,
+  role: string,
+  payload: Record<string, any>
+) => {
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
 
+    const allowedStatuses = ["active", "cancelled", "returned"];
+
+    if (!payload.status || !allowedStatuses.includes(payload.status)) {
+      throw new Error(
+        `Invalid status. Allowed values are: ${allowedStatuses.join(", ")}`
+      );
+    }
+
+    const checkQuery = `SELECT * FROM bookings WHERE id = $1`;
+    const checkResult = await client.query(checkQuery, [bookingId]);
+
+    if (checkResult.rows.length === 0) {
+      throw new Error("Booking not found");
+    }
+
+    const existingBooking = checkResult.rows[0];
+
+    if (role === "customer") {
+      if (existingBooking.customer_id !== userId) {
+        throw new Error("You are not authorized to modify this booking");
+      }
+
+      if (payload.status !== "cancelled") {
+        throw new Error("Customers can only cancel bookings");
+      }
+
+      const startTime = new Date(existingBooking.rent_start_date).getTime();
+      const currentTime = new Date().getTime();
+
+      if (currentTime >= startTime) {
+        throw new Error(
+          "You cannot cancel a booking once the rental period has started"
+        );
+      }
+    }
+
     const updateQ = `UPDATE bookings SET status = $1 WHERE id = $2 RETURNING *`;
     const booking = await client.query(updateQ, [payload.status, bookingId]);
+    const bookingData = booking.rows[0];
 
     if (payload.status === "returned" || payload.status === "cancelled") {
-      const vehicleId = booking.rows[0].vehicle_id;
+      const vehicleId = bookingData.vehicle_id;
       await client.query(
         `UPDATE vehicles SET availability_status = 'available' WHERE id = $1`,
         [vehicleId]
@@ -83,7 +158,17 @@ const updateBooking = async (bookingId: string, payload: any) => {
     }
 
     await client.query("COMMIT");
-    return booking.rows[0];
+
+    if (payload.status === "returned") {
+      return {
+        ...bookingData,
+        vehicle: {
+          availability_status: "available",
+        },
+      };
+    }
+
+    return bookingData;
   } catch (err) {
     await client.query("ROLLBACK");
     throw err;

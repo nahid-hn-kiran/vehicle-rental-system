@@ -4,7 +4,7 @@ import config from "./config";
 import initDB from "./config/db";
 import { vehicleRoutes } from "./modules/vehicle/vehicle.routes";
 import { bookingRoutes } from "./modules/booking/booking.routes";
-import { userRoutes } from "./modules/user/user.routes";
+import { userRoutes } from "./modules/user/users.routes";
 
 const app = express();
 // Parser

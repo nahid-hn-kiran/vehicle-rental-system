@@ -2,8 +2,17 @@
 
 A backend API for a vehicle rental platform where users can book vehicles and admins can manage inventory. Built with **Node.js**, **Express.js**, **TypeScript**, and **PostgreSQL (NeonDB)**.
 
-**Live Deployment:** []  
+**Live Deployment:** [https://vehicle-rental-system-lake.vercel.app/]  
 **GitHub Repository:** [https://github.com/nahid-hn-kiran/vehicle-rental-system]
+
+## Test Credentials
+
+Use these credentials to test the Admin features (Vehicle Management, User Management):
+
+| Role         | Email                  | Password            |
+| :----------- | :--------------------- | :------------------ |
+| **Admin**    | `john.doe@example.com` | `securePassword123` |
+| **Customer** | `nahid@gmail.com`      | `nahid1234`         |
 
 ---
 
